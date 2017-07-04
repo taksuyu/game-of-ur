@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, TemplateHaskell #-}
 
 module Test.Game.Ur where
 
@@ -24,7 +24,7 @@ applyMoves = foldl f initialBoard
 moves :: Monad m => Gen m [(Turn, Int, Int)]
 moves = Gen.list (Range.linear 0 500) $ do
   turn <- Gen.enum BlackTurn WhiteTurn
-  num  <- Gen.int (Range.linear 1 4) -- We want to ignore rolls of 0 as they just get skipped
+  num  <- Gen.int (Range.linear 4 1) -- We want to ignore rolls of 0 as they just get skipped
   nump <- Gen.int (Range.linear 0 7)
   pure (turn, num, nump)
 
@@ -53,6 +53,38 @@ prop_pieces_on_board = property $ do
   let ur = applyMoves m
   assert $ piecesOnBoard blackLane ur <= 8
   assert $ piecesOnBoard whiteLane ur <= 8
+
+-- TODO: Support in hedgehog needs to provide a way for us to test that there
+-- exists a failure as intended.
+--
+-- prop_cant_always_move_pieces :: Property
+-- prop_cant_always_move_pieces = property $ do
+--   m <- forAll moves
+--   _ <- applyMoves' m
+--   pure ()
+--   where
+--   applyMoves' :: [(Turn, Int, Int)] -> Test IO UrBoard
+--   applyMoves' = flip foldl (pure initialBoard) $
+--     \ ur (t, n, p) -> do
+--       board <- ur
+--       let moves' = availableMoves t n board in
+--         case V.toList moves' of
+--         [] -> do
+--           failure
+--         l  -> do
+--           pure $ processMove (l !! (mod p (length l)))
+
+prop_no_middle_lane_overlap :: Property
+prop_no_middle_lane_overlap = property $ do
+  m <- forAll moves
+  let (UrBoard Lanes{..} _) = applyMoves m
+  assert
+    $ flip all [4..11]
+    $ \ n -> not $ hasPiece (whiteLane V.! n) && hasPiece (blackLane V.! n)
+    where
+      hasPiece WhitePiece = True
+      hasPiece BlackPiece = True
+      hasPiece NoPiece    = False
 
 tests :: IO Bool
 tests =

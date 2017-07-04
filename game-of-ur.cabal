@@ -21,7 +21,7 @@ library
     hs-source-dirs:      src
     exposed-modules:     Game.Ur
     
-test-suite rbour-test
+test-suite ur-test
     default-language:    Haskell2010
     ghc-options:         -Wall -threaded
     build-depends:       base

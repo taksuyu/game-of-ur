@@ -86,7 +86,7 @@ movePiece t Nothing i ur@UrBoard{..} =
     (           _, 0) -> PlaceConflict ur
     (Just NoPiece, _) ->
       if dest == 3
-      then AnotherTurn (updateLanes t i) else PlaceSucceed (updateLanes t dest)
+      then AnotherTurn (updateLanes t dest) else PlaceSucceed (updateLanes t dest)
     _                 -> PlaceConflict ur
   where
     updateLanes BlackTurn u =
