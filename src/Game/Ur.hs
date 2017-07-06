@@ -13,51 +13,14 @@ initialBoard :: UrBoard
 initialBoard =
   UrBoard initialLanes initialScore
 
+-- FIXME: We can honestly replace this type with (Ur, a) but that's breaking so
+-- It'll be done after a tag.
 data Ur a
   = NoTurn a
   | AnotherTurn a
   | PlaceConflict a
   | PlaceSucceed a
   deriving (Show, Functor)
-
--- -- If this turns out to be useful, I'll uncomment it.
--- instance Applicative Ur where
---   pure = NoTurn
-
---   -- This follows the law -- pure id <*> v = v
---   NoTurn fn <*> ur =
---     case ur of
---       NoTurn a -> NoTurn (fn a)
---       AnotherTurn a -> AnotherTurn (fn a)
---       PlaceConflict a -> PlaceConflict (fn a)
---       PlaceSucceed a -> PlaceSucceed (fn a)
-
---   AnotherTurn fn <*> ur =
---     case ur of
---       NoTurn a -> AnotherTurn (fn a)
---       AnotherTurn a -> AnotherTurn (fn a)
---       PlaceConflict a -> AnotherTurn (fn a)
---       PlaceSucceed a -> AnotherTurn (fn a)
-
---   PlaceConflict fn <*> ur =
---     case ur of
---       NoTurn a -> PlaceConflict (fn a)
---       AnotherTurn a -> PlaceConflict (fn a)
---       PlaceConflict a -> PlaceConflict (fn a)
---       PlaceSucceed a -> PlaceConflict (fn a)
-
---   PlaceSucceed fn <*> ur =
---     case ur of
---       NoTurn a -> PlaceSucceed (fn a)
---       AnotherTurn a -> PlaceSucceed (fn a)
---       PlaceConflict a -> PlaceSucceed (fn a)
---       PlaceSucceed a -> PlaceSucceed (fn a)
-
--- instance Monad Ur where
---   NoTurn a >>= fn = fn a
---   AnotherTurn a >>= fn = fn a
---   PlaceConflict a >>= fn = fn a
---   PlaceSucceed a >>= fn = fn a
 
 newtype Pos = Pos { unPos :: Int } deriving Show
 
@@ -166,6 +129,12 @@ data Piece
   | BlackPiece
   | WhitePiece
   deriving (Show, Eq, Enum)
+
+hasPiece :: Piece -> Bool
+hasPiece p = case p of
+  BlackPiece -> True
+  WhitePiece -> True
+  _          -> False
 
 data Score = Score
   { blackScore :: Int

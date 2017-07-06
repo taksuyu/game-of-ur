@@ -81,11 +81,6 @@ prop_no_middle_lane_overlap = property $ do
   assert
     $ flip all [4..11]
     $ \ n -> not $ hasPiece (whiteLane V.! n) && hasPiece (blackLane V.! n)
-    where
-      hasPiece WhitePiece = True
-      hasPiece BlackPiece = True
-      hasPiece NoPiece    = False
 
 tests :: IO Bool
-tests =
-  checkParallel $$(discover)
+tests = checkParallel $$(discover)
