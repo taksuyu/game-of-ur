@@ -145,8 +145,8 @@ initialScore :: Score
 initialScore = Score 0 0
 
 availablePieces :: Turn -> UrBoard -> Int
-availablePieces BlackTurn ur = 8 - (blackScore . score) ur - piecesOnBoard blackLane ur
-availablePieces WhiteTurn ur = 8 - (whiteScore . score) ur - piecesOnBoard whiteLane ur
+availablePieces BlackTurn ur = 7 - (blackScore . score) ur - piecesOnBoard blackLane ur
+availablePieces WhiteTurn ur = 7 - (whiteScore . score) ur - piecesOnBoard whiteLane ur
 
 piecesOnBoard :: (Lanes -> V.Vector Piece) -> UrBoard -> Int
 piecesOnBoard fn ur =

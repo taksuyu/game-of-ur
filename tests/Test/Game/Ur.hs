@@ -44,15 +44,15 @@ prop_gamescore_max :: Property
 prop_gamescore_max = property $ do
   m <- forAll moves
   let (UrBoard _ (Score bs ws)) = applyMoves m
-  assert $ bs <= 8
-  assert $ ws <= 8
+  assert $ bs <= 7
+  assert $ ws <= 7
 
 prop_pieces_on_board :: Property
 prop_pieces_on_board = property $ do
   m <- forAll moves
   let ur = applyMoves m
-  assert $ piecesOnBoard blackLane ur <= 8
-  assert $ piecesOnBoard whiteLane ur <= 8
+  assert $ piecesOnBoard blackLane ur <= 7
+  assert $ piecesOnBoard whiteLane ur <= 7
 
 -- TODO: Support in hedgehog needs to provide a way for us to test that there
 -- exists a failure as intended.
