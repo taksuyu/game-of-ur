@@ -124,6 +124,12 @@ data Turn
   | WhiteTurn
   deriving (Show, Eq, Enum)
 
+nextTurn :: Turn -> Turn
+nextTurn t =
+  case t of
+    BlackTurn -> WhiteTurn
+    WhiteTurn -> BlackTurn
+
 data Piece
   = NoPiece
   | BlackPiece
