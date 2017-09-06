@@ -7,7 +7,7 @@ import qualified Data.Vector as V
 data UrBoard = UrBoard
   { lane :: Lanes
   , score :: Score
-  } deriving Show
+  } deriving (Eq, Show)
 
 initialBoard :: UrBoard
 initialBoard =
@@ -27,7 +27,7 @@ newtype Pos = Pos { unPos :: Int } deriving Show
 data Lanes = Lanes
   { blackLane :: V.Vector Piece
   , whiteLane :: V.Vector Piece
-  } deriving Show
+  } deriving (Eq, Show)
 
 initialLanes :: Lanes
 initialLanes = let v = V.replicate 14 NoPiece in
@@ -145,7 +145,7 @@ hasPiece p = case p of
 data Score = Score
   { blackScore :: Int
   , whiteScore :: Int
-  } deriving Show
+  } deriving (Eq, Show)
 
 initialScore :: Score
 initialScore = Score 0 0
