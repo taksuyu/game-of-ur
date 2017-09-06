@@ -43,7 +43,7 @@ movePiece :: Turn -> Maybe Pos -> Int -> UrBoard -> Ur UrBoard
 -- Putting a piece on the board doesn't have a previous position.
 movePiece t Nothing i ur@UrBoard{..} =
   let dest    = i - 1
-      pLane   = (getPlayerLane t) lane
+      pLane   = getPlayerLane t lane
       pAtDest = pLane V.!? dest
   in case (pAtDest, availablePieces t ur) of
     (           _, 0) -> PlaceConflict ur
@@ -64,7 +64,7 @@ movePiece BlackTurn (Just (Pos n)) i ur@UrBoard{..} =
       pAtPos   = pLane V.!? n
       pAtDest  = pLane V.!? dest
       pAtOppo  = if dest > 3 && dest < 12 then whiteLane lane V.!? dest else Nothing
-      update m = updateLanes [(n, NoPiece), (dest, BlackPiece)] m
+      update   = updateLanes [(n, NoPiece), (dest, BlackPiece)]
   in case (pAtPos, pAtDest, pAtOppo) of
     (Just BlackPiece, Nothing, _) ->
       if dest == 14
@@ -95,7 +95,7 @@ movePiece WhiteTurn (Just (Pos n)) i ur@UrBoard{..} =
       pAtPos   = pLane V.!? n
       pAtDest  = pLane V.!? dest
       pAtOppo  = if dest > 3 && dest < 12 then blackLane lane V.!? dest else Nothing
-      update m = updateLanes [(n, NoPiece), (dest, WhitePiece)] m
+      update   = updateLanes [(n, NoPiece), (dest, WhitePiece)]
   in case (pAtPos, pAtDest, pAtOppo) of
     (Just WhitePiece, Nothing, _) ->
       if dest == 14
@@ -164,7 +164,7 @@ availableMoves t i ur =
   where
     putOnBoard = movePiece t Nothing i ur
 
-    movePieces = foldr f (V.empty) (V.findIndices (== getPlayerTile t) $ getPlayerLane t $ lane ur)
+    movePieces = foldr f V.empty (V.findIndices (== getPlayerTile t) $ getPlayerLane t $ lane ur)
 
     f n v = movePiece t (Just (Pos n)) i ur `V.cons` v
 
