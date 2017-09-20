@@ -19,9 +19,9 @@ applyMoves = foldl f initialBoard
     f ur (t, n, p) = let moves' = availableMoves t n ur in
       case V.toList moves' of
         [] -> ur
-        l  -> processMove (l !! (mod p (length l)))
+        l  -> processMove (l !! mod p (length l))
 
-moves :: Monad m => Gen m [(Turn, Int, Int)]
+moves :: Gen [(Turn, Int, Int)]
 moves = Gen.list (Range.linear 0 500) $ do
   turn <- Gen.enum BlackTurn WhiteTurn
   num  <- Gen.int (Range.linear 4 1) -- We want to ignore rolls of 0 as they just get skipped
