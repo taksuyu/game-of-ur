@@ -1,175 +1,162 @@
-{-# LANGUAGE DeriveFunctor, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, NamedFieldPuns #-}
 
 module Game.Ur where
 
-import qualified Data.Vector as V
+import qualified Data.IntSet as IS
 
-data UrBoard = UrBoard
-  { lane :: Lanes
-  , score :: Score
-  } deriving (Eq, Show)
+import Control.Applicative
+import Control.Monad
+import Data.Maybe
+import System.Random
+  ( getStdRandom, randomR )
 
-initialBoard :: UrBoard
-initialBoard =
-  UrBoard initialLanes initialScore
+data Board = Board
+  { black :: Side
+  , white :: Side
+  , dice :: Int
+  , turn :: Turn
+  } deriving Show
 
--- FIXME: We can honestly replace this type with (Ur, a) but that's breaking so
--- It'll be done after a tag.
-data Ur a
-  = NoTurn a
-  | AnotherTurn a
-  | PlaceConflict a
-  | PlaceSucceed a
-  deriving (Show, Functor)
+initialBoard :: Int -> Turn -> Board
+initialBoard dice turn = Board initialSide initialSide dice turn
 
-newtype Pos = Pos { unPos :: Int } deriving Show
+newBoard :: IO Board
+newBoard = pure initialBoard <*> newDiceRoll <*> fmap ([Black, White] !! ) (getStdRandom $ randomR (0, 1))
 
-data Lanes = Lanes
-  { blackLane :: V.Vector Piece
-  , whiteLane :: V.Vector Piece
-  } deriving (Eq, Show)
+-- | A side represents a players total pieces, the current positions of pieces
+-- on the board, and how many pieces have been scored.
+data Side = Side
+  { pieces :: Int
+    -- ^ The amount of pieces a player can place on the board
+  , path :: IS.IntSet
+    -- ^ The positions of the pieces currently on the board
+  , scored :: Int
+    -- ^ How many pieces have made it through the board
+  } deriving Show
 
-initialLanes :: Lanes
-initialLanes = let v = V.replicate 14 NoPiece in
-  Lanes v v
+initialSide :: Side
+initialSide = Side 7 IS.empty 0
 
-getPlayerLane :: Turn -> Lanes -> V.Vector Piece
-getPlayerLane BlackTurn = blackLane
-getPlayerLane WhiteTurn = whiteLane
-
--- TODO: This function DEFINITELY needs to be property tested!
-movePiece :: Turn -> Maybe Pos -> Int -> UrBoard -> Ur UrBoard
-
--- Putting a piece on the board doesn't have a previous position.
-movePiece t Nothing i ur@UrBoard{..} =
-  let dest    = i - 1
-      pLane   = getPlayerLane t lane
-      pAtDest = pLane V.!? dest
-  in case (pAtDest, availablePieces t ur) of
-    (           _, 0) -> PlaceConflict ur
-    (Just NoPiece, _) ->
-      if dest == 3
-      then AnotherTurn (updateLanes t dest) else PlaceSucceed (updateLanes t dest)
-    _                 -> PlaceConflict ur
-  where
-    updateLanes BlackTurn u =
-      ur { lane = lane { blackLane = V.update_ (blackLane lane) (V.singleton u) (V.singleton BlackPiece) } }
-    updateLanes WhiteTurn u =
-      ur { lane = lane { whiteLane = V.update_ (whiteLane lane) (V.singleton u) (V.singleton WhitePiece) } }
-
--- Moving a black piece further down the board.
-movePiece BlackTurn (Just (Pos n)) i ur@UrBoard{..} =
-  let dest     = n + i
-      pLane    = blackLane lane
-      pAtPos   = pLane V.!? n
-      pAtDest  = pLane V.!? dest
-      pAtOppo  = if dest > 3 && dest < 12 then whiteLane lane V.!? dest else Nothing
-      update   = updateLanes [(n, NoPiece), (dest, BlackPiece)]
-  in case (pAtPos, pAtDest, pAtOppo) of
-    (Just BlackPiece, Nothing, _) ->
-      if dest == 14
-      then PlaceSucceed
-           (ur { lane  = lane  { blackLane = V.update_ (blackLane lane) (V.singleton n) (V.singleton NoPiece) }
-               , score = score { blackScore = blackScore score + 1 }})
-      else PlaceConflict ur
-    (Just BlackPiece, Just NoPiece, Just WhitePiece) ->
-      case dest of
-        7 -> PlaceConflict ur
-        _ -> PlaceSucceed (update (Just dest))
-    (Just BlackPiece, Just NoPiece, _) ->
-      if dest == 3 || dest == 7 || dest == 13
-      then AnotherTurn (update Nothing) else PlaceSucceed (update Nothing)
-    (_, _, _) ->
-      PlaceConflict ur
-   where
-     updateLanes u Nothing  =
-       ur { lane = lane { blackLane = V.update  (blackLane lane) (V.fromList  u) } }
-     updateLanes u (Just v) =
-       ur { lane = lane { blackLane = V.update  (blackLane lane) (V.fromList  u)
-                        , whiteLane = V.update_ (whiteLane lane) (V.singleton v) (V.singleton NoPiece) } }
-
--- Moving a white piece further down the board.
-movePiece WhiteTurn (Just (Pos n)) i ur@UrBoard{..} =
-  let dest     = n + i
-      pLane    = whiteLane lane
-      pAtPos   = pLane V.!? n
-      pAtDest  = pLane V.!? dest
-      pAtOppo  = if dest > 3 && dest < 12 then blackLane lane V.!? dest else Nothing
-      update   = updateLanes [(n, NoPiece), (dest, WhitePiece)]
-  in case (pAtPos, pAtDest, pAtOppo) of
-    (Just WhitePiece, Nothing, _) ->
-      if dest == 14
-      then PlaceSucceed
-           (ur { lane  = lane  { whiteLane = V.update_ (whiteLane lane) (V.singleton n) (V.singleton NoPiece) }
-               , score = score { whiteScore = whiteScore score + 1 }})
-      else PlaceConflict ur
-    (Just WhitePiece, Just NoPiece, Just BlackPiece) ->
-      case dest of
-        7 -> PlaceConflict ur
-        _ -> PlaceSucceed (update (Just dest))
-    (Just WhitePiece, Just NoPiece, _) ->
-      if dest == 3 || dest == 7 || dest == 13
-      then AnotherTurn (update Nothing) else PlaceSucceed (update Nothing)
-    (_, _, _) ->
-      PlaceConflict ur
-   where
-     updateLanes u Nothing  =
-       ur { lane = lane { whiteLane = V.update  (whiteLane lane) (V.fromList  u) } }
-     updateLanes u (Just v) =
-       ur { lane = lane { whiteLane = V.update  (whiteLane lane) (V.fromList  u)
-                        , blackLane = V.update_ (blackLane lane) (V.singleton v) (V.singleton NoPiece) } }
+-- | A return type to tell what the next game state should be.
+data Ur
+  = AnotherTurn
+  | PlaceSucceed
+  deriving Show
 
 data Turn
-  = BlackTurn
-  | WhiteTurn
-  deriving (Show, Eq, Enum)
+  = White
+  | Black
+  deriving (Show, Eq, Ord)
 
 nextTurn :: Turn -> Turn
-nextTurn t =
-  case t of
-    BlackTurn -> WhiteTurn
-    WhiteTurn -> BlackTurn
+nextTurn = \case
+  Black -> White
+  White -> Black
 
-data Piece
-  = NoPiece
-  | BlackPiece
-  | WhitePiece
-  deriving (Show, Eq, Enum)
+-- getPlayerLane :: Turn -> Lanes -> V.Vector Piece
+-- getPlayerLane BlackTurn = blackLane
+-- getPlayerLane WhiteTurn = whiteLane
 
-hasPiece :: Piece -> Bool
-hasPiece p = case p of
-  BlackPiece -> True
-  WhitePiece -> True
-  _          -> False
+nextBoardState :: (Ur, Board) -> IO Board
+nextBoardState ur = do
+  newDice <- newDiceRoll
+  pure $ nextBoard newDice ur
 
-data Score = Score
-  { blackScore :: Int
-  , whiteScore :: Int
-  } deriving (Eq, Show)
+nextBoard :: Int -> (Ur, Board) -> Board
+nextBoard newDice = \case
+  (AnotherTurn, board) -> do
+    board { dice = newDice }
+  (PlaceSucceed, board@Board{ turn }) -> do
+    board { dice = newDice, turn = nextTurn turn }
 
-initialScore :: Score
-initialScore = Score 0 0
+-- | Helper function for generating dice rolls.
+newDiceRoll :: IO Int
+newDiceRoll = fmap sum . replicateM 4 $ getStdRandom (randomR (0, 1))
 
-availablePieces :: Turn -> UrBoard -> Int
-availablePieces BlackTurn ur = 7 - (blackScore . score) ur - piecesOnBoard blackLane ur
-availablePieces WhiteTurn ur = 7 - (whiteScore . score) ur - piecesOnBoard whiteLane ur
+move :: Int -> Board -> Maybe (Ur, Board)
+move i b@Board{ black = black@Side{ path = blackPath }, white = white@Side{ path = whitePath }, dice, turn } =
+  case turn of
+    Black -> findMove black
+    White -> findMove white
 
-piecesOnBoard :: (Lanes -> V.Vector Piece) -> UrBoard -> Int
-piecesOnBoard fn ur =
-  foldr (\a b -> if a /= NoPiece then b + 1 else b) 0 (fn $ lane ur)
-
-availableMoves :: Turn -> Int -> UrBoard -> V.Vector (Ur UrBoard)
-availableMoves t i ur =
-  V.filter noConflicts $ putOnBoard `V.cons` movePieces
   where
-    putOnBoard = movePiece t Nothing i ur
+    findMove side = placePiece side <|> movePiece side <|> takePiece side
 
-    movePieces = foldr f V.empty (V.findIndices (== getPlayerTile t) $ getPlayerLane t $ lane ur)
+    placePiece side@Side{ pieces, path } =
+      case (i == dice && not (IS.member i path), turn) of
+        (True, Black) ->
+          if pieces > 0
+          then if i == 4
+            then
+              Just $ (AnotherTurn, b { black = side { pieces = pieces - 1, path = IS.insert i path } })
+            else
+              Just $ (PlaceSucceed, b { black = side { pieces = pieces - 1, path = IS.insert i path } })
+          else Nothing
+        (True, White) ->
+          if pieces > 0
+          then if i == 4
+            then
+              Just $ (AnotherTurn, b { white = side { pieces = pieces - 1, path = IS.insert i path } })
+            else
+              Just $ (PlaceSucceed, b { white = side { pieces = pieces - 1, path = IS.insert i path } })
+          else Nothing
+        _ ->
+          Nothing
 
-    f n v = movePiece t (Just (Pos n)) i ur `V.cons` v
+    movePiece side@Side{ path } =
+      case (IS.member i path && i + dice < 15 && not (IS.member (i + dice) path), turn) of
+        (True, Black) ->
+          if not (i + dice == 8 && IS.member 8 whitePath)
+          then case (i + dice > 4 && i + dice < 13, IS.member (i + dice) whitePath) of
+            (True, True) ->
+              Just $ (PlaceSucceed, b { black = side { path = IS.insert (i + dice) $ IS.delete i path }
+                                      , white = white { path = IS.delete (i + dice) whitePath
+                                                      , pieces = pieces white + 1 }
+                                      })
+            (True, False) ->
+              if i + dice == 8
+              then Just $ (AnotherTurn, b { black = side { path = IS.insert (i + dice) $ IS.delete i path } })
+              else Just $ (PlaceSucceed, b { black = side { path = IS.insert (i + dice) $ IS.delete i path } })
+            _ ->
+              if i + dice == 4 || i + dice == 14
+              then Just $ (AnotherTurn, b { black = side { path = IS.insert (i + dice) $ IS.delete i path } })
+              else Just $ (PlaceSucceed, b { black = side { path = IS.insert (i + dice) $ IS.delete i path } })
+          else Nothing
+        (True, White) ->
+          if not (i + dice == 8 && IS.member 8 blackPath)
+          then case (i + dice > 4 && i + dice < 13, IS.member (i + dice) blackPath) of
+            (True, True) ->
+              Just $ (PlaceSucceed, b { white = side { path = IS.insert (i + dice) $ IS.delete i path }
+                                      , black = black { path = IS.delete (i + dice) blackPath
+                                                      , pieces = pieces black + 1 }
+                                      })
+            (True, False) ->
+              if i + dice == 8
+              then Just $ (AnotherTurn, b { white = side { path = IS.insert (i + dice) $ IS.delete i path } })
+              else Just $ (PlaceSucceed, b { white = side { path = IS.insert (i + dice) $ IS.delete i path } })
+            _ ->
+              if i + dice == 4 || i + dice == 14
+              then Just $ (AnotherTurn, b { white = side { path = IS.insert (i + dice) $ IS.delete i path } })
+              else Just $ (PlaceSucceed, b { white = side { path = IS.insert (i + dice) $ IS.delete i path } })
+          else Nothing
+        _ ->
+          Nothing
 
-    getPlayerTile BlackTurn = BlackPiece
-    getPlayerTile WhiteTurn = WhitePiece
+    takePiece side@Side{ path, scored } =
+      case (IS.member i path && i + dice == 15, turn) of
+        (True, Black) ->
+          Just $ (PlaceSucceed, b { black = side { path = IS.delete i path, scored = scored + 1 } })
+        (True, White) ->
+          Just $ (PlaceSucceed, b { white = side { path = IS.delete i path, scored = scored + 1 } })
+        _ ->
+          Nothing
 
-    noConflicts PlaceConflict {} = False
-    noConflicts _                = True
+piecesOnBoard :: Board -> Int
+piecesOnBoard Board{ black, white, turn } =
+  case turn of
+    Black -> IS.size (path black)
+    White -> IS.size (path white)
+
+availableMoves :: Board -> [(Ur, Board)]
+availableMoves board =
+  mapMaybe (`move` board) [1..14]

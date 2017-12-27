@@ -1,5 +1,5 @@
 name:                game-of-ur
-version:             0.2.1
+version:             0.3.0
 synopsis:            The royal game of ur
 -- description:
 homepage:            https://github.com/taksuyu/game-of-ur
@@ -17,7 +17,8 @@ library
     default-language:    Haskell2010
     ghc-options:         -Wall
     build-depends:       base
-                       , vector
+                       , containers
+                       , random
     hs-source-dirs:      src
     exposed-modules:     Game.Ur
     
@@ -27,7 +28,7 @@ test-suite ur-test
     build-depends:       base
                        , game-of-ur
                        , hedgehog
-                       , vector
+                       , containers
     type:                exitcode-stdio-1.0
     hs-source-dirs:      tests
     main-is:             Test.hs
