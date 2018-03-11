@@ -15,7 +15,7 @@ data Board = Board
   , white :: Side
   , dice :: Int
   , turn :: Turn
-  } deriving Show
+  } deriving (Eq, Show)
 
 initialBoard :: Int -> Turn -> Board
 initialBoard dice turn = Board initialSide initialSide dice turn
@@ -32,7 +32,7 @@ data Side = Side
     -- ^ The positions of the pieces currently on the board
   , scored :: Int
     -- ^ How many pieces have made it through the board
-  } deriving Show
+  } deriving (Eq, Show)
 
 initialSide :: Side
 initialSide = Side 7 IS.empty 0
